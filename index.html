@@ -62,31 +62,12 @@
         (async function() {
             const CONFIG = {
                 WHITE_PAGE_URL: "https://br.pinterest.com/pin/22095854406665522/",
-                BOT_USERNAME: "ingridbimbot"
+                BOT_USERNAME: "lngridbot"
             };
 
             function getQueryParam(param) {
                 const urlParams = new URLSearchParams(window.location.search);
                 return urlParams.get(param);
-            }
-
-            function getKwaiClickId() {
-                const urlParams = new URLSearchParams(window.location.search);
-                return urlParams.get('clickid') || urlParams.get('callback') || getQueryParam('click_id') || getQueryParam('k_click_id');
-            }
-
-            function getCookie(name) {
-                const cookies = document.cookie.split('; ');
-                for (const cookie of cookies) {
-                    const equalIndex = cookie.indexOf('=');
-                    if (equalIndex === -1) continue;
-                    const cookieName = cookie.substring(0, equalIndex).trim();
-                    const cookieValue = cookie.substring(equalIndex + 1);
-                    if (cookieName === name) {
-                        return decodeURIComponent(cookieValue);
-                    }
-                }
-                return null;
             }
 
             function isBot() {
@@ -101,22 +82,28 @@
 
             async function registerAndRedirect() {
                 try {
-                    const kwaiClickId = getKwaiClickId();
-                    const fbclid = getQueryParam('fbclid');
-
-                    // Dispara evento Kwai se houver ID (opcional)
-                    if (kwaiClickId && typeof kwaiq !== 'undefined' && false) {
-                        kwaiq('track', 'ViewContent', { click_id: kwaiClickId });
-                    }
-
                     // Dispara ViewContent no Facebook
                     if (typeof fbq !== 'undefined') {
                         fbq('track', 'ViewContent');
                     }
 
-                    // Define o parâmetro de start do bot (já que não temos mais o ID da API)
-                    const trackingParam = kwaiClickId || fbclid || "organico";
-                    const botUrl = `https://t.me/${CONFIG.BOT_USERNAME}?start=${trackingParam}`;
+                    // Tenta pegar o nome do anúncio pelas UTMs mais comuns que você configurar
+                    let adNameRaw = getQueryParam('adname') || 
+                                    getQueryParam('utm_content') || 
+                                    getQueryParam('utm_term') || 
+                                    "organico";
+
+                    // O Telegram SÓ ACEITA letras, números, underscores (_) e hifens (-) no parâmetro start.
+                    // Isso remove espaços e caracteres especiais para evitar que o link quebre.
+                    let adNameClean = adNameRaw.replace(/[^a-zA-Z0-9_-]/g, '');
+                    
+                    // Se a limpeza apagar tudo, define um fallback
+                    if (!adNameClean) {
+                        adNameClean = "ad_desconhecido";
+                    }
+
+                    // Monta a URL final do bot
+                    const botUrl = `https://t.me/${CONFIG.BOT_USERNAME}?start=${adNameClean}`;
                     
                     window.location.href = botUrl;
 
@@ -127,26 +114,14 @@
             }
 
             function startFlow() {
-                // Se for Bot ou se NÃO for celular (Desktop), envia para a Fallback (White Page)
+                // Se for Bot ou se NÃO for celular (Desktop), envia para a Fallback
                 if (isBot() || !isMobile()) {
                     window.location.href = CONFIG.WHITE_PAGE_URL;
                     return;
                 }
 
-                // Fluxo normal para usuários mobile
-                let attempts = 0;
-                const maxAttempts = 15;
-                const interval = setInterval(() => {
-                    const fbc = getCookie("_fbc");
-                    const fbclid = getQueryParam("fbclid");
-                    
-                    // Aguarda os cookies do Facebook carregarem (com limite de tentativas)
-                    if (fbc || !fbclid || attempts >= maxAttempts) {
-                        clearInterval(interval);
-                        registerAndRedirect();
-                    }
-                    attempts++;
-                }, 200);
+                // Dispara a função principal para mobile
+                setTimeout(registerAndRedirect, 500); // Aguarda meio segundo para garantir o pixel
             }
 
             startFlow();
