@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -43,6 +42,7 @@
             to { opacity: 1; }
         }
     </style>
+    
     <script>
         !function(f,b,e,v,n,t,s)
         {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -52,28 +52,29 @@
         t.src=v;s=b.getElementsByTagName(e)[0];
         s.parentNode.insertBefore(t,s)}(window, document,'script',
         'https://connect.facebook.net/en_US/fbevents.js');
-        fbq('init', '927371892845509');
+        fbq('init', '902473605014744');
         fbq('track', 'PageView');
     </script>
     <noscript><img height="1" width="1" style="display:none"
-    src="https://www.facebook.com/tr?id=927371892845509&ev=PageView&noscript=1"
+    src="https://www.facebook.com/tr?id=902473605014744&ev=PageView&noscript=1"
     /></noscript>
     <script>
         (async function() {
             const CONFIG = {
-                                PRESSEL_ID: 307,
                 WHITE_PAGE_URL: "https://br.pinterest.com/pin/22095854406665522/",
-                BOT_USERNAME: "lngridbot",
-                API_BASE_URL: "https://www.hot-track.com"
+                BOT_USERNAME: "ingridbimbot"
             };
+
             function getQueryParam(param) {
                 const urlParams = new URLSearchParams(window.location.search);
                 return urlParams.get(param);
             }
+
             function getKwaiClickId() {
                 const urlParams = new URLSearchParams(window.location.search);
-                return urlParams.get('clickid') || urlParams.get('callback');
+                return urlParams.get('clickid') || urlParams.get('callback') || getQueryParam('click_id') || getQueryParam('k_click_id');
             }
+
             function getCookie(name) {
                 const cookies = document.cookie.split('; ');
                 for (const cookie of cookies) {
@@ -87,92 +88,59 @@
                 }
                 return null;
             }
-            function getFacebookCookies() {
-                return {
-                    fbp: getCookie('_fbp'),
-                    fbc: getCookie('_fbc')
-                };
-            }
+
             function isBot() {
                 const userAgent = navigator.userAgent;
                 return /facebookexternalhit|Facebot/i.test(userAgent);
             }
+
+            function isMobile() {
+                const userAgent = navigator.userAgent;
+                return /Mobi|Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+            }
+
             async function registerAndRedirect() {
                 try {
-                    
-            const isMobile = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent);
-            if (!isMobile) {
-                window.location.href = CONFIG.WHITE_PAGE_URL;
-                return;
-            }
-                    
-                    const { fbp, fbc } = getFacebookCookies();
-                    const kwaiClickId = getKwaiClickId() || getQueryParam('click_id') || getQueryParam('k_click_id');
-                    const kwaiCallback = getQueryParam('callback');
-                    
-                    const clickPayload = {
-                        presselId: CONFIG.PRESSEL_ID,
-                        referer: document.referrer || null,
-                        fbclid: getQueryParam('fbclid'),
-                        fbp: fbp,
-                        fbc: fbc,
-                        user_agent: navigator.userAgent,
-                        utm_source: getQueryParam('utm_source'),
-                        utm_campaign: getQueryParam('utm_campaign'),
-                        utm_medium: getQueryParam('utm_medium'),
-                        utm_content: getQueryParam('utm_content'),
-                        utm_term: getQueryParam('utm_term'),
-                        click_id: kwaiClickId,
-                        k_click_id: getQueryParam('k_click_id'),
-                        callback: kwaiCallback
-                    };
-                    
+                    const kwaiClickId = getKwaiClickId();
+                    const fbclid = getQueryParam('fbclid');
+
+                    // Dispara evento Kwai se houver ID (opcional)
                     if (kwaiClickId && typeof kwaiq !== 'undefined' && false) {
-                        kwaiq('track', 'ViewContent', {
-                            click_id: kwaiClickId
-                        });
-                        console.log('Evento ViewContent do Kwai disparado com click_id:', kwaiClickId);
+                        kwaiq('track', 'ViewContent', { click_id: kwaiClickId });
                     }
 
-                    const response = await fetch(CONFIG.API_BASE_URL + '/api/registerClick', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(clickPayload)
-                    });
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.message || 'Falha ao registrar clique.');
-                    }
-                    const { click_id, pageview_sent_server_side } = await response.json();
-
-                    if (!pageview_sent_server_side && typeof fbq !== 'undefined' && true) {
-                        fbq('track', 'ViewContent', {}, { eventID: click_id });
-                        console.log('Evento ViewContent disparado com eventID:', click_id);
-                    } else if (pageview_sent_server_side) {
-                        console.log('Evento PageView já foi enviado pelo servidor. Pulando envio no frontend.');
-                    } else if (!true) {
-                        console.log('Integração Meta não configurada. Pulando evento ViewContent.');
-                    } else {
-                        console.warn('fbq não definido. Não foi possível disparar ViewContent.');
+                    // Dispara ViewContent no Facebook
+                    if (typeof fbq !== 'undefined') {
+                        fbq('track', 'ViewContent');
                     }
 
-                    const botUrl = `https://t.me/${CONFIG.BOT_USERNAME}?start=${click_id}`;
+                    // Define o parâmetro de start do bot (já que não temos mais o ID da API)
+                    const trackingParam = kwaiClickId || fbclid || "organico";
+                    const botUrl = `https://t.me/${CONFIG.BOT_USERNAME}?start=${trackingParam}`;
+                    
                     window.location.href = botUrl;
+
                 } catch (error) {
-                    console.error("Erro na lógica da pressel:", error);
+                    console.error("Erro na lógica de redirecionamento:", error);
                     window.location.href = CONFIG.WHITE_PAGE_URL;
                 }
             }
+
             function startFlow() {
-                if (isBot()) {
+                // Se for Bot ou se NÃO for celular (Desktop), envia para a Fallback (White Page)
+                if (isBot() || !isMobile()) {
                     window.location.href = CONFIG.WHITE_PAGE_URL;
                     return;
                 }
+
+                // Fluxo normal para usuários mobile
                 let attempts = 0;
                 const maxAttempts = 15;
                 const interval = setInterval(() => {
                     const fbc = getCookie("_fbc");
                     const fbclid = getQueryParam("fbclid");
+                    
+                    // Aguarda os cookies do Facebook carregarem (com limite de tentativas)
                     if (fbc || !fbclid || attempts >= maxAttempts) {
                         clearInterval(interval);
                         registerAndRedirect();
@@ -180,6 +148,7 @@
                     attempts++;
                 }, 200);
             }
+
             startFlow();
         })();
     </script>
