@@ -77,42 +77,38 @@
 
             function getQueryParam(param) {
                 const urlParams = new URLSearchParams(window.location.search);
-                return urlParams.get(param);
+                return urlParams.get(param) || '';
             }
 
             function isBot() {
-                const userAgent = navigator.userAgent;
-                return /facebookexternalhit|Facebot/i.test(userAgent);
+                return /facebookexternalhit|Facebot/i.test(navigator.userAgent);
             }
 
             function isMobile() {
-                const userAgent = navigator.userAgent;
-                return /Mobi|Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+                return /Mobi|Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            }
+
+            function cleanString(str) {
+                // Mantém letras, números e hifens. Troca caracteres estranhos por underline.
+                return str.replace(/[^a-zA-Z0-9-]/g, '_').replace(/_+/g, '_').toLowerCase();
             }
 
             async function registerAndRedirect() {
                 try {
-                    // Dispara ViewContent no Facebook
                     if (typeof fbq !== 'undefined') {
                         fbq('track', 'ViewContent');
                     }
 
-                    // Tenta pegar o nome do anúncio pelas UTMs
-                    let adNameRaw = getQueryParam('adname') || 
-                                    getQueryParam('utm_content') || 
-                                    getQueryParam('utm_term') || 
-                                    "organico";
+                    // Captura as UTMs e limpa para não quebrar o link do Telegram
+                    let campaign = cleanString(getQueryParam('utm_campaign') || 'organico');
+                    let adset = cleanString(getQueryParam('utm_content') || 'organico');
+                    let adname = cleanString(getQueryParam('adname') || getQueryParam('utm_term') || 'organico');
 
-                    // Mantém apenas letras, números e hifens/underscores pro ManyChat
-                    let adNameClean = adNameRaw.replace(/[^a-zA-Z0-9_-]/g, '');
+                    // Empacota tudo com duplo underline
+                    let payload = `${campaign}__${adset}__${adname}`;
                     
-                    if (!adNameClean) {
-                        adNameClean = "ad_desconhecido";
-                    }
-
-                    // Monta a URL final do bot no formato start=NOME_DO_ANUNCIO
-                    const botUrl = `https://t.me/${CONFIG.BOT_USERNAME}?start=${adNameClean}`;
-                    
+                    // Monta a URL final
+                    const botUrl = `https://t.me/${CONFIG.BOT_USERNAME}?start=${payload}`;
                     window.location.href = botUrl;
 
                 } catch (error) {
@@ -122,13 +118,10 @@
             }
 
             function startFlow() {
-                // Se for Bot ou se NÃO for celular (Desktop), envia para a Fallback (Pinterest)
                 if (isBot() || !isMobile()) {
                     window.location.href = CONFIG.WHITE_PAGE_URL;
                     return;
                 }
-
-                // Aumentado para 800ms para garantir que o Pixel e a Utmify carreguem corretamente
                 setTimeout(registerAndRedirect, 800); 
             }
 
